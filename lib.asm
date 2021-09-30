@@ -119,36 +119,9 @@ parse_uint:
 ; Возвращает в rax: число, rdx : его длину в символах (включая знак, если он был) 
 ; rdx = 0 если число прочитать не удалось
 parse_int:
-xor r8, r8
-xor rcx, rcx
-mov r10, 10
-.A:
-    mov r8b, [rdi]
-    inc rdi
-    cmp r8b, '0'
-    jb .NO
-    cmp r8b, '9'
-    ja .NO
-    xor rax, rax
-    sub r8b, '0'
-    mov al, r8b
-    inc rdx
-.B:
-    mov r8b, [rdi]
-    inc rdi
-    cmp r8b, '0'
-    jb .OK
-    cmp r8b, '9'
-    ja .OK
-    inc rdx
-    mul r10
-    sub r8b, '0'
-    add rax, r8
-    jmp .B
-.OK:
-.NO:
-    mov rdx, rcx
-    ret
+    lol
+    kek
+    cheburek
 
 ; Принимает указатель на строку, указатель на буфер и длину буфера
 ; Копирует строку в буфер
