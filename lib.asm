@@ -60,7 +60,51 @@ print_newline:
 ; Совет: выделите место в стеке и храните там результаты деления
 ; Не забудьте перевести цифры в их ASCII коды.
 print_uint:
-    xor rax, rax
+    push rdi
+    call string_length
+    pop rdi ; address of resource
+    mov rcx, rax ;length of resource
+    dec rcx
+    push 0 ; prepare for result
+    mov rdx, 0
+.loop:
+    dec rcx
+    cmp byte [rdi+rdx], 49 ; distingush 1 or not
+    je .add
+    inc rdx
+    jmp .skip
+.add:
+    mov rsi, 1
+    inc rdx
+    pop rax
+    sal rsi, cl
+    add rax, rsi
+    push rax
+.skip:
+    cmp rcx, 0
+    jne .loop
+    pop rax
+    mov rbx, 10
+    xor rcx, rcx
+.save_loop:
+    xor rdx, rdx
+    div rbx
+    push rdx
+    inc rcx
+    cmp rax, 0
+    jne .save_loop
+.print_loop:
+    pop rax
+    push rcx
+    lea rsi, [table+rax]
+    mov rax, 1
+    mov rdi, 1
+    mov rdx, 1
+    syscall
+    pop rcx
+    dec rcx
+    cmp rcx, 0
+    jne .print_loop
     ret
 
 ; Выводит знаковое 8-байтовое число в десятичном формате 
@@ -107,8 +151,7 @@ read_word:
 ; Возвращает в rax: число, rdx : его длину в символах
 ; rdx = 0 если число прочитать не удалось
 parse_uint:
-    xor rax, rax
-    ret
+    
 
 
 
