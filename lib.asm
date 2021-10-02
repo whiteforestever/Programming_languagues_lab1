@@ -4,8 +4,6 @@ fileName: db 'It is very simple', 0
 newline_char: db 10
 codes: db '0123456789abcdef', 0
 table: db '0123456789', 0
-plusSign: db '+'
-minusSign: db '-'
 section .text
  
  
@@ -89,31 +87,15 @@ print_uint:
 
 ; Выводит знаковое 8-байтовое число в десятичном формате 
 print_int:
-    cmp byte[rdi], '-'
-    jz .printMinus
-    cmp byte[rdi], '+'
-    jz .printPlus
-    call print_uint
-    ret
-.printMinus:
     push rdi
-    mov rdx, 1
-    mov rsi, minusSign
-    mov rdi, 1
-    mov rax, 1
-    syscall
+    test rdi, rdi
+    jns .A
+    mov rdi, '-'
+    call print_char
     pop rdi
+    neg rdi
+.A:
     call print_uint
-    ret
-.printPlus:
-    push rdi
-    mov rdx, 1
-    mov rsi, plusSign
-    mov rdi, 1
-    mov rax, 1
-    syscall
-    pop rdi
-    xor rax, rax
     ret
 
 ; Принимает два указателя на нуль-терминированные строки, возвращает 1 если они равны, 0 иначе
