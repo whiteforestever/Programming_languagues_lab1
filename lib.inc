@@ -48,7 +48,6 @@ print_char:
 
 ; Переводит строку (выводит символ с кодом 0xA)
 print_newline:
-    print_newline:
     mov rax, 1            ; 'write' syscall identifier
     mov rdi, 1            ; stdout file descriptor
     mov rsi, newline_char ; where do we take data from
@@ -60,11 +59,45 @@ print_newline:
 ; Совет: выделите место в стеке и храните там результаты деления
 ; Не забудьте перевести цифры в их ASCII коды.
 print_uint:
-    xor rax, rax
+    push rcx
+    xor rcx, rcx
+    mov rax, rdi; get parametre from rdi
+    mov rbx, 10
+.save_loop:
+    xor rdx, rdx
+    div rbx
+    push rdx
+    inc rcx
+    cmp rax, 0
+    jne .save_loop
+.print_loop:
+    pop rax
+    push rcx
+    lea rsi, [table+rax]
+    mov rax, 1
+    mov rdi, 1
+    mov rdx, 1
+    syscall
+    pop rcx
+    dec rcx
+    cmp rcx, 0
+    jne .print_loop
+    pop rcx
     ret
 
 ; Выводит знаковое 8-байтовое число в десятичном формате 
 print_int:
+    cmp byte[rdi], '-'
+    jz .printMinus
+    cmp byte[rdi], '+'
+    jz .printPlus
+    call print_uint
+    ret
+.printMinus:
+    inc rdi
+    call print_uint
+    ret
+.printPlus:
     xor rax, rax
     ret
 
@@ -107,21 +140,9 @@ read_word:
 ; Возвращает в rax: число, rdx : его длину в символах
 ; rdx = 0 если число прочитать не удалось
 parse_uint:
-    xor rax, rax
-    ret
-
-
-
-
-; Принимает указатель на строку, пытается
-; прочитать из её начала знаковое число.
-; Если есть знак, пробелы между ним и числом не разрешены.
-; Возвращает в rax: число, rdx : его длину в символах (включая знак, если он был) 
-; rdx = 0 если число прочитать не удалось
-parse_int:
-xor r8, r8
-xor rcx, rcx
-mov r10, 10
+    xor r8, r8
+    xor rcx, rcx
+    mov r10, 10
 .A:
     mov r8b, [rdi]
     inc rdi
@@ -149,6 +170,30 @@ mov r10, 10
 .NO:
     mov rdx, rcx
     ret
+
+; Принимает указатель на строку, пытается
+; прочитать из её начала знаковое число.
+; Если есть знак, пробелы между ним и числом не разрешены.
+; Возвращает в rax: число, rdx : его длину в символах (включая знак, если он был) 
+; rdx = 0 если число прочитать не удалось
+parse_int:
+    cmp byte[rdi], '-'
+    jz .ne
+    call parse_uint
+    ret
+.ne:
+    inc rdi
+    call parse_uint
+    test rdx, rdx
+    jz .er
+    inc rdx
+    neg rax
+    ret
+.er:
+    xor rax, rax
+    ret
+
+
 
 ; Принимает указатель на строку, указатель на буфер и длину буфера
 ; Копирует строку в буфер
