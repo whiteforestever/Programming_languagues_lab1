@@ -2,7 +2,8 @@ section .data
 message: db  'hello, world!', 10
 fileName: db 'It is very simple', 0
 newline_char: db 10
-codes: db '0123456789abcdef'
+codes: db '0123456789abcdef', 0
+table: db '0123456789', 0
 
 section .text
  
@@ -198,4 +199,55 @@ mov r10, 10
 ; Возвращает длину строки если она умещается в буфер, иначе 0
 string_copy:
     xor rax, rax
+    ret
+
+print_uint:
+mov rax, rdi; get parametre from rdi
+mov rbx, 10
+.save_loop:
+xor rdx, rdx
+div rbx
+push rdx
+inc rcx
+cmp rax, 0
+jne .save_loop
+.print_loop:
+pop rax
+push rcx
+lea rsi, [table+rax]
+mov rax, 1
+mov rdi, 1
+mov rdx, 1
+syscall
+pop rcx
+dec rcx
+cmp rcx, 0
+jne .print_loop
+ret
+
+print_uint:
+    push rcx
+    xor rcx, rcx
+    mov rax, rdi; get parametre from rdi
+    mov rbx, 10
+.save_loop:
+    xor rdx, rdx
+    div rbx
+    push rdx
+    inc rcx
+    cmp rax, 0
+    jne .save_loop
+.print_loop:
+    pop rax
+    push rcx
+    lea rsi, [table+rax]
+    mov rax, 1
+    mov rdi, 1
+    mov rdx, 1
+    syscall
+    pop rcx
+    dec rcx
+    cmp rcx, 0
+    jne .print_loop
+    pop rcx
     ret
