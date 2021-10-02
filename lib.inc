@@ -2,7 +2,8 @@ section .data
 message: db  'hello, world!', 10
 fileName: db 'It is very simple', 0
 newline_char: db 10
-codes: db '0123456789abcdef'
+codes: db '0123456789abcdef', 0
+table: db '0123456789', 0
 
 section .text
  
