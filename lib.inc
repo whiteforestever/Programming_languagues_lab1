@@ -1,10 +1,8 @@
 section .data
-message: db  'hello, world!', 10
-fileName: db 'It is very simple', 0
 newline_char: db 10
 codes: db '0123456789abcdef', 0
 table: db '0123456789', 0
-
+word_buffer: times 256 db 0
 section .text
  
  
@@ -54,7 +52,7 @@ print_newline:
     mov rsi, newline_char ; where do we take data from
     mov rdx, 1            ; the amount of bytes to write
     syscall
-   ret
+    ret
 
 ; Выводит беззнаковое 8-байтовое число в десятичном формате 
 ; Совет: выделите место в стеке и храните там результаты деления
@@ -88,23 +86,34 @@ print_uint:
 
 ; Выводит знаковое 8-байтовое число в десятичном формате 
 print_int:
-    cmp byte[rdi], '-'
-    jz .printMinus
-    cmp byte[rdi], '+'
-    jz .printPlus
+    push rdi
+    test rdi, rdi
+    jns .A
+    mov rdi, '-'
+    call print_char
+    pop rdi
+    neg rdi
+.A:
     call print_uint
-    ret
-.printMinus:
-    inc rdi
-    call print_uint
-    ret
-.printPlus:
-    xor rax, rax
     ret
 
 ; Принимает два указателя на нуль-терминированные строки, возвращает 1 если они равны, 0 иначе
 string_equals:
-    xor rax, rax
+    xor rcx, rcx
+.loop:
+    mov al, byte[rdi+rcx]
+    mov dl, byte[rsi+rcx]
+    cmp al, dl
+    jne .not_equals
+    inc rcx
+    cmp al, 0x00
+    je .equals
+    jmp .loop
+.equals:
+    mov rax, 1
+    ret
+.not_equals:
+    mov rax, 0
     ret
 
 ; Читает один символ из stdin и возвращает его. Возвращает 0 если достигнут конец потока
@@ -133,6 +142,36 @@ read_char:
 ; Эта функция должна дописывать к слову нуль-терминатор
 
 read_word:
+    xor r8, rdi
+    mov r9, rsi
+.spaces:
+    call read_char
+    test rax, rax
+    jz .end
+    cmp rax, 0x20
+    je .spaces
+    cmp rax, 0x9
+    je .spaces
+    cmp rax, 0xA
+    je .spaces
+.read_next:
+    mov rdi, word_buffer
+    call string_length
+    cmp r9, rax
+    jg .fail
+    mov [r8], rax
+    inc r8
+    call read_char
+    cmp rax, 0x20
+    jg .read_next
+.end:
+    mov rdi, word_buffer
+    call string_length
+    mov rdx, rax
+    mov rax, word_buffer
+    ret
+.fail:
+    mov rax, '0'
     ret
  
 
@@ -154,7 +193,7 @@ parse_uint:
     xor rax, rax
     sub r8b, '0'
     mov al, r8b
-    inc rdx
+    inc rcx
 .B:
     mov r8b, [rdi]
     inc rdi
@@ -162,7 +201,7 @@ parse_uint:
     jb .OK
     cmp r8b, '9'
     ja .OK
-    inc rdx
+    inc rcx
     mul r10
     sub r8b, '0'
     add rax, r8
@@ -200,5 +239,4 @@ parse_int:
 ; Копирует строку в буфер
 ; Возвращает длину строки если она умещается в буфер, иначе 0
 string_copy:
-    xor rax, rax
-    ret
+    
