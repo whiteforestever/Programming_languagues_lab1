@@ -1,4 +1,5 @@
 section .data
+
 newline_char: db 10
 table: db '0123456789', 0
 
@@ -24,13 +25,15 @@ print_string:
 ; Принимает указатель на нуль-терминированную строку, возвращает её длину
 string_length:
     xor rax, rax
-.loop:
-    cmp byte [rdi+rax], 0
-    je .end
-    inc rax
-    jmp .loop
-.end:
-    ret
+
+    .loop:
+        cmp byte [rdi+rax], 0
+        je .end
+        inc rax
+        jmp .loop
+
+    .end:
+        ret
 
 ; Принимает код символа и выводит его в stdout
 print_char:
@@ -50,7 +53,7 @@ print_newline:
     mov rsi, newline_char ; where do we take data from
     mov rdx, 1            ; the amount of bytes to write
     syscall
-   ret
+    ret
 
 ; Выводит беззнаковое 8-байтовое число в десятичном формате 
 ; Совет: выделите место в стеке и храните там результаты деления
@@ -60,27 +63,29 @@ print_uint:
     xor rcx, rcx
     mov rax, rdi; get parametre from rdi
     mov rbx, 10
-.save_loop:
-    xor rdx, rdx
-    div rbx
-    push rdx
-    inc rcx
-    cmp rax, 0
-    jne .save_loop
-.print_loop:
-    pop rax
-    push rcx
-    lea rsi, [table+rax]
-    mov rax, 1
-    mov rdi, 1
-    mov rdx, 1
-    syscall
-    pop rcx
-    dec rcx
-    cmp rcx, 0
-    jne .print_loop
-    pop rcx
-    ret
+
+    .save_loop:
+        xor rdx, rdx
+        div rbx
+        push rdx
+        inc rcx
+        cmp rax, 0
+        jne .save_loop
+        
+    .print_loop:
+        pop rax
+        push rcx
+        lea rsi, [table+rax]
+        mov rax, 1
+        mov rdi, 1
+        mov rdx, 1
+        syscall
+        pop rcx
+        dec rcx
+        cmp rcx, 0
+        jne .print_loop
+        pop rcx
+        ret
     
 ; Выводит знаковое 8-байтовое число в десятичном формате 
 print_int:
@@ -96,22 +101,24 @@ print_int:
 
 ; Принимает два указателя на нуль-терминированные строки, возвращает 1 если они равны, 0 иначе
 string_equals:
-     xor r8, r8
+    xor r8, r8
     xor r9, r9
+
     .string_equals_loop:
-    mov r8b, byte [rdi]
-    mov r9b, byte [rsi]
-    cmp r8, r9
-    jnz .string_equals_end_0
-    inc rdi
-    inc rsi
-    cmp r8, 0
-    jnz .string_equals_loop
-    mov rax, 1
-    ret
+        mov r8b, byte [rdi]
+        mov r9b, byte [rsi]
+        cmp r8, r9
+        jnz .string_equals_end_0
+        inc rdi
+        inc rsi
+        cmp r8, 0
+        jnz .string_equals_loop
+        mov rax, 1
+        ret
+        
     .string_equals_end_0:
-    xor rax, rax
-    ret
+        xor rax, rax
+        ret
 
 ; Читает один символ из stdin и возвращает его. Возвращает 0 если достигнут конец потока
 read_char:
@@ -125,10 +132,12 @@ read_char:
     cmp rax, 10
     jz .A
     jmp .RET
-.A:
-    mov rax, 48
-.RET:
-    ret 
+
+    .A:
+        mov rax, 48
+
+    .RET:
+        ret 
 
 ; Принимает: адрес начала буфера, размер буфера
 ; Читает в буфер слово из stdin, пропуская пробельные символы в начале, .
@@ -145,7 +154,7 @@ read_word:
 	xor r11,r11	; length
 	mov r12,rdi
 	
-.tabs:
+    .tabs:
 		push r11
 		call read_char
 		pop r11
@@ -162,7 +171,7 @@ read_word:
 		inc r11
 		dec r10
 	
-.reader:
+    .reader:
 		cmp r10,0
 		je .nul
 		push r11
@@ -182,19 +191,18 @@ read_word:
 		dec r10
 		jmp .reader
 		
-.nul:
+    .nul:
 		mov rdx,0
 		pop r12
 		mov rax,0
 		ret
 
-.end:
+    .end:
 		mov rdx,r11
 		mov rax,r12
 		mov byte [r9],0
 		pop r12
 		ret
- 
 
 ; Принимает указатель на строку, пытается
 ; прочитать из её начала беззнаковое число.
@@ -204,33 +212,35 @@ parse_uint:
     xor r8, r8
     xor rcx, rcx
     mov r10, 10
-.A:
-    mov r8b, [rdi]
-    inc rdi
-    cmp r8b, '0'
-    jb .NO
-    cmp r8b, '9'
-    ja .NO
-    xor rax, rax
-    sub r8b, '0'
-    mov al, r8b
-    inc rcx
-.B:
-    mov r8b, [rdi]
-    inc rdi
-    cmp r8b, '0'
-    jb .OK
-    cmp r8b, '9'
-    ja .OK
-    inc rcx
-    mul r10
-    sub r8b, '0'
-    add rax, r8
-    jmp .B
-.OK:
-.NO:
-    mov rdx, rcx
-    ret
+
+    .A:
+        mov r8b, [rdi]
+        inc rdi
+        cmp r8b, '0'
+        jb .end
+        cmp r8b, '9'
+        ja .end
+        xor rax, rax
+        sub r8b, '0'
+        mov al, r8b
+        inc rcx
+
+    .B:
+        mov r8b, [rdi]
+        inc rdi
+        cmp r8b, '0'
+        jb .end
+        cmp r8b, '9'
+        ja .end
+        inc rcx
+        mul r10
+        sub r8b, '0'
+        add rax, r8
+        jmp .B
+
+    .end:
+        mov rdx, rcx
+        ret
 
 
 ; Принимает указатель на строку, пытается
@@ -243,17 +253,19 @@ parse_int:
     jz .negative
     call parse_uint
     ret
-.negative:
-    inc rdi
-    call parse_uint
-    test rdx, rdx
-    jz .err
-    inc rdx
-    neg rax
-    ret
-.err:
-    xor rax, rax
-    ret
+
+    .negative:
+        inc rdi
+        call parse_uint
+        test rdx, rdx
+        jz .err
+        inc rdx
+        neg rax
+        ret
+
+    .err:
+        xor rax, rax
+        ret
 
 ; Принимает указатель на строку, указатель на буфер и длину буфера
 ; Копирует строку в буфер
@@ -266,20 +278,20 @@ string_copy:
 	cmp rdx, rax
 	jl .not_eq
 
-.loop:	
-	mov rdx, [rdi]
-	mov [rsi], rdx
-	cmp byte[rdi], 0
-	je .end
-	inc rdi
-	inc rsi
-	jmp .loop
+    .loop:	
+        mov rdx, [rdi]
+        mov [rsi], rdx
+        cmp byte[rdi], 0
+        je .end
+        inc rdi
+        inc rsi
+        jmp .loop
 
-.not_eq:
-	xor rax, rax
+    .not_eq:
+        xor rax, rax
 
-.end:
-	pop rdx
-	pop rsi
-	pop rdi
-	ret
+    .end:
+        pop rdx
+        pop rsi
+        pop rdi
+        ret
