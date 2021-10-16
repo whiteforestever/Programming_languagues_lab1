@@ -1,12 +1,8 @@
 section .data
-message: db  'hello, world!', 10
-fileName: db 'It is very simple', 0
 newline_char: db 10
-codes: db '0123456789abcdef', 0
 table: db '0123456789', 0
 
 section .text
- 
  
 ; Принимает код возврата и завершает текущий процесс
 exit:
@@ -88,11 +84,32 @@ print_uint:
     
 ; Выводит знаковое 8-байтовое число в десятичном формате 
 print_int:
-    xor rax, rax
-    ret
+    cmp rdi, 0
+    jge print_uint
+    neg rdi
+    push rdi
+    mov edi, '-'
+    call print_char
+    pop rdi
+    jmp print_uint
+
 
 ; Принимает два указателя на нуль-терминированные строки, возвращает 1 если они равны, 0 иначе
 string_equals:
+     xor r8, r8
+    xor r9, r9
+    .string_equals_loop:
+    mov r8b, byte [rdi]
+    mov r9b, byte [rsi]
+    cmp r8, r9
+    jnz .string_equals_end_0
+    inc rdi
+    inc rsi
+    cmp r8, 0
+    jnz .string_equals_loop
+    mov rax, 1
+    ret
+    .string_equals_end_0:
     xor rax, rax
     ret
 
@@ -122,7 +139,61 @@ read_char:
 ; Эта функция должна дописывать к слову нуль-терминатор
 
 read_word:
-    ret
+    push r12
+	mov r9,rdi	; pointer
+	mov r10,rsi ; size
+	xor r11,r11	; length
+	mov r12,rdi
+	
+.tabs:
+		push r11
+		call read_char
+		pop r11
+		cmp rax,0x0
+		je .end
+		cmp rax,0x20
+		je .tabs
+		cmp rax,0x9
+		je .tabs
+		cmp rax,0xA
+		je .tabs
+		mov [r9],rax
+		inc r9
+		inc r11
+		dec r10
+	
+.reader:
+		cmp r10,0
+		je .nul
+		push r11
+		call read_char
+		pop r11
+		cmp rax,0x0
+		je .end
+		cmp rax,0x20
+		je .end
+		cmp rax,0x9
+		je .end
+		cmp rax,0xA
+		je .end
+		mov [r9],rax
+		inc r9
+		inc r11
+		dec r10
+		jmp .reader
+		
+.nul:
+		mov rdx,0
+		pop r12
+		mov rax,0
+		ret
+
+.end:
+		mov rdx,r11
+		mov rax,r12
+		mov byte [r9],0
+		pop r12
+		ret
  
 
 ; Принимает указатель на строку, пытается
@@ -161,6 +232,7 @@ parse_uint:
     mov rdx, rcx
     ret
 
+
 ; Принимает указатель на строку, пытается
 ; прочитать из её начала знаковое число.
 ; Если есть знак, пробелы между ним и числом не разрешены.
@@ -181,11 +253,33 @@ parse_int:
     ret
 .err:
     xor rax, rax
-    ret 
+    ret
 
 ; Принимает указатель на строку, указатель на буфер и длину буфера
 ; Копирует строку в буфер
 ; Возвращает длину строки если она умещается в буфер, иначе 0
 string_copy:
-    xor rax, rax
-    ret
+    push rdi
+	push rsi
+	push rdx
+	call string_length
+	cmp rdx, rax
+	jl .not_eq
+
+.loop:	
+	mov rdx, [rdi]
+	mov [rsi], rdx
+	cmp byte[rdi], 0
+	je .end
+	inc rdi
+	inc rsi
+	jmp .loop
+
+.not_eq:
+	xor rax, rax
+
+.end:
+	pop rdx
+	pop rsi
+	pop rdi
+	ret
