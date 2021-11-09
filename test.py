@@ -44,7 +44,7 @@ def compile( fname, text ):
     f.write( text )
     f.close()
 
-    subprocess.call( ['nasm', '--version'] )
+    subprocess.call( ['nasm', '-version'] )
 
     if subprocess.call( ['nasm', '-f', 'elf64', fname + '.asm', '-o', fname+'.o'] ) == 0 and subprocess.call( ['ld', '-o' , fname, fname+'.o'] ) == 0:
              print ' ', fname, ': compiled'
