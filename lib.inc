@@ -1,13 +1,8 @@
-section .data
-
-newline_char: db 10
-
 section .text
  
 ; Принимает код возврата и завершает текущий процесс
 exit:
     mov rax, 60
-    xor rdi, rdi
     syscall
 
 ; Принимает указатель на нуль-терминированную строку, выводит её в stdout
@@ -34,6 +29,12 @@ string_length:
     .return:
         ret
 
+; Переводит строку (выводит символ с кодом 0xA)
+; После будет тело функции print_char, хотя с jump это более интуитивно понятно
+print_newline:
+    mov rdi, 0xA
+    jmp print_char
+
 ; Принимает код символа и выводит его в stdout
 print_char:
     push rdi
@@ -43,12 +44,6 @@ print_char:
     mov rdi, 1              ; stdout file descriptor
     syscall
     pop rdi
-    ret
-
-; Переводит строку (выводит символ с кодом 0xA)
-print_newline:
-    mov rdi, 0xA
-    call print_char
     ret
 
 ; Выводит беззнаковое 8-байтовое число в десятичном формате 
@@ -89,14 +84,14 @@ print_int:
 string_equals:
     xor r8, r8
     xor r9, r9
+    xor rax, rax
 
     .string_equals_loop:
-        mov r8b, [rdi]
-        mov r9b, [rsi]
-        cmp r8, r9
+        mov r8b, [rdi + rax]
+        mov r9b, [rsi + rax]
+        cmp r8b, r9b
         jnz .return_0
-        inc rdi
-        inc rsi
+        inc rax
         cmp r8, 0
         jnz .string_equals_loop
         mov rax, 1
@@ -115,12 +110,11 @@ read_char:
     mov rdx, 1
     syscall
     pop rax
-    cmp rax, 0x0          ; код перевода строки
-    jz .return_0
-    ret
+    cmp rax, 0x0
+    jnz .return
+    mov rax, 0
 
-    .return_0:
-        mov rax, 0
+    .return:
 		ret
 
 ; Принимает: адрес начала буфера, размер буфера
@@ -134,46 +128,28 @@ read_char:
 read_word:
     push r12                ; callee-saved register
 	mov r9, rdi	            ; pointer where is the next character written to
-	xor r11,r11	            ; index (at the end is the length)
-	mov r12,rdi
-	
-    .skip_tabs:
-		push r11
-		push rsi
-		call read_char
-		pop rsi
-		pop r11
-		cmp rax, 0x0        ; null
-		je .end
-		cmp rax, 0x20       ; пробел
-		je .skip_tabs
-		cmp rax, 0x9        ; табуляция
-		je .skip_tabs
-		cmp rax, 0xA        ; перевод строки
-		je .skip_tabs
-		mov [r9], al
-		inc r9              ; next symbol
-		inc r11             ; index (length)++
+	xor r11, r11	        ; index (at the end is the length)
+	mov r12, rdi
 	
     .read_symbol:
-		cmp rsi, r11         ; if (size == 0) return 0
-		je .return_0
-		push r11            ; caller-saved, syscall changes the value
+        push r11            ; caller-saved, syscall changes the value
 		push rsi
 		call read_char
 		pop rsi
 		pop r11
-		cmp rax, 0x0        ; null
-		je .end
-		cmp rax, 0x20       ; пробел
-		je .end
-		cmp rax, 0x9        ; табуляция
-		je .end
-		cmp rax, 0xA        ; перевод строки
-		je .end
-		mov [r9], rax
+		cmp al, 0x0        ; null
+        je .end
+		cmp al, 0x20       ; пробел
+        je .maybe_end
+		cmp al, 0x9        ; табуляция
+		je .maybe_end
+		cmp al, 0xA        ; перевод строки
+		je .maybe_end
+		mov [r9], al
 		inc r9              ; next symbol
-		inc r11             ; index (length)++
+		inc r11             ; index/length ++
+		cmp r11, rsi        ; if (в буфере больше нет свободного места), то то выдаем ошибку переполнения в виде return 0
+		jge .return_0
 		jmp .read_symbol
 		
     .return_0:
@@ -181,6 +157,10 @@ read_word:
 		pop r12
 		mov rax, 0
 		ret
+
+    .maybe_end:
+        cmp r11, 0x0
+        je .read_symbol
 
     .end:
 		mov byte[r9], 0
@@ -198,18 +178,6 @@ parse_uint:
     xor rcx, rcx            ; счетчик длины
     mov r10, 10
     xor rax, rax            ; результат
-
-
-    .A:
-        mov r8b, [rdi]
-        inc rdi
-        cmp r8b, '0'
-        jb .end
-        cmp r8b, '9'
-        ja .end
-        sub r8b, '0'
-        mov al, r8b
-        inc rcx
 
     .B:
         mov r8b, [rdi]
@@ -257,21 +225,17 @@ parse_int:
 ; Копирует строку в буфер
 ; Возвращает длину строки если она умещается в буфер, иначе 0
 string_copy:
-	call string_length
+    call string_length
     cmp rax, rdx
-	jg .return_0
-
-    .loop:
-        mov rdx, [rdi]
-        mov [rsi], rdx
-        cmp dl, 0
-        je .return
-        inc rsi
-        inc rdi
-        jmp .loop
+    jg .return_0
+    mov rcx, rax
+    mov r8, rsi
+    inc rcx        ; Very important!!!
+    mov rsi, rdi   ; Адрес области "откуда"
+    mov rdi, r8    ; Адрес области "куда"
+    rep movsb
+    ret
 
     .return_0:
         xor rax, rax
-
-    .return:
         ret
